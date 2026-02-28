@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceGuard — Audio Authentication System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Variables ─────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:        #080b10;
+      --surface:   #0d1117;
+      --surface2:  #111820;
+      --border:    #1e2a38;
+      --green:     #00e5a0;
+      --green-dim: #00e5a015;
+      --red:       #ff4560;
+      --red-dim:   #ff456015;
+      --yellow:    #f5c518;
+      --text:      #e2e8f0;
+      --muted:     #4a5568;
+      --mono:      'Space Mono', monospace;
+      --sans:      'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Noise texture overlay ─────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    /* ── Animated grid background ──────────────────────── */
+    .grid-bg {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden;
+      background: linear-gradient(var(--border) 1px, transparent 1px),
+                  linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 100%);
+      opacity: 0.25;
+    }
+
+    /* ── Layout ────────────────────────────────────────── */
+    .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      text-align: center;
+      padding: 56px 24px 32px;
+      position: relative; z-index: 1;
+    }
+
+    .logo-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--green-dim);
+      border: 1px solid var(--green)40;
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--green);
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .logo-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+
+    h1 span { color: var(--green); }
+
+    .subtitle {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-family: var(--mono);
+      animation: fadeDown 0.6s 0.2s ease both;
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Stats Bar ─────────────────────────────────────── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 32px 0;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--green)60; }
+
+    .stat-card .num {
+      font-family: var(--mono);
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--green);
+      line-height: 1;
+    }
+
+    .stat-card .label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 6px;
+      font-family: var(--mono);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Tab Navigation ────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 20px;
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--green);
+      color: #000;
+      font-weight: 700;
+    }
+
+    .tab-btn:not(.active):hover {
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    /* ── Panel ─────────────────────────────────────────── */
+    .panel { display: none; animation: fadeUp 0.3s ease both; }
+    .panel.active { display: block; }
+
+    /* ── Upload Zone ───────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-zone::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 50% 50%, var(--green)08, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--green);
+      background: var(--surface2);
+    }
+
+    .upload-zone:hover::after, .upload-zone.dragover::after { opacity: 1; }
+
+    .upload-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .upload-zone h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .upload-zone p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .file-chosen {
+      display: none;
+      margin-top: 12px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--green);
+      background: var(--green-dim);
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--green)40;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Action Button ─────────────────────────────────── */
+    .action-btn {
+      width: 100%;
+      margin-top: 16px;
+      padding: 16px;
+      background: var(--green);
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px var(--green)40;
+    }
+
+    .action-btn:disabled {
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Loading State ─────────────────────────────────── */
+    .loading-bar {
+      display: none;
+      margin-top: 16px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .loading-bar.active { display: block; }
+
+    .loading-bar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 40%;
+      background: var(--green);
+      border-radius: 2px;
+      animation: loadingSlide 1.2s ease-in-out infinite;
+    }
+
+    @keyframes loadingSlide {
+      0%   { transform: translateX(-200%); }
+      100% { transform: translateX(350%); }
+    }
+
+    .loading-text {
+      display: none;
+      margin-top: 10px;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .loading-text.active { display: block; }
+
+    /* ── Result Card ───────────────────────────────────── */
+    .result-card {
+      display: none;
+      margin-top: 20px;
+      border-radius: 16px;
+      padding: 28px;
+      border: 1px solid;
+      animation: resultPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+
+    @keyframes resultPop {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .result-card.green {
+      background: var(--green-dim);
+      border-color: var(--green)50;
+    }
+
+    .result-card.red {
+      background: var(--red-dim);
+      border-color: var(--red)50;
+    }
+
+    .result-card.yellow {
+      background: #f5c51810;
+      border-color: var(--yellow)50;
+    }
+
+    .verdict-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .verdict-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .verdict-icon { font-size: 1.8rem; }
+
+    .verdict-text h2 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .green .verdict-text h2 { color: var(--green); }
+    .red   .verdict-text h2 { color: var(--red); }
+    .yellow .verdict-text h2 { color: var(--yellow); }
+
+    .verdict-text p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      margin-top: 2px;
+    }
+
+    .risk-pill {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 6px 14px;
+      border-radius: 100px;
+    }
+
+    .green .risk-pill { background: var(--green)20; color: var(--green); }
+    .red   .risk-pill { background: var(--red)20;   color: var(--red); }
+    .yellow .risk-pill { background: var(--yellow)20; color: var(--yellow); }
+
+    /* Confidence Meter */
+    .confidence-section { margin-bottom: 20px; }
+
+    .confidence-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .confidence-labels span:last-child { color: var(--text); font-weight: 700; }
+
+    .confidence-track {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0%;
+    }
+
+    .green .confidence-fill { background: var(--green); }
+    .red   .confidence-fill { background: var(--red); }
+    .yellow .confidence-fill { background: var(--yellow); }
+
+    /* Metadata grid */
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .meta-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .meta-item .key {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .meta-item .val {
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      color: var(--text);
+      font-weight: 700;
+      margin-top: 3px;
+    }
+
+    /* Report Button */
+    .report-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      background: transparent;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .green .report-btn { border: 1px solid var(--green)60; color: var(--green); }
+    .red   .report-btn { border: 1px solid var(--red)60;   color: var(--red); }
+
+    .report-btn:hover { opacity: 0.8; transform: translateY(-1px); }
+
+    /* ── Protect Success ───────────────────────────────── */
+    .protect-success {
+      display: none;
+      margin-top: 20px;
+      background: var(--green-dim);
+      border: 1px solid var(--green)50;
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      animation: resultPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+
+    .protect-success .big-icon { font-size: 3rem; margin-bottom: 10px; }
+    .protect-success h2 { color: var(--green); font-size: 1.2rem; margin-bottom: 6px; }
+    .protect-success p  { color: var(--muted); font-size: 0.8rem; font-family: var(--mono); }
+
+    /* ── History Panel ─────────────────────────────────── */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+    }
+
+    .history-table th {
+      text-align: left;
+      padding: 10px 14px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+
+    .history-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border)60;
+      color: var(--text);
+    }
+
+    .history-table tr:hover td { background: var(--surface2); }
+
+    .verdict-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 1px;
+    }
+
+    .verdict-pill.ok  { background: var(--green-dim); color: var(--green); }
+    .verdict-pill.bad { background: var(--red-dim);   color: var(--red); }
+
+    /* ── How It Works ──────────────────────────────────── */
+    .how-it-works {
+      margin: 40px 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .how-it-works h3 {
+      font-size: 0.75rem;
+      font-family: var(--mono);
+      color: var(--muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .step {
+      padding: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .step .num {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--green);
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+    }
+
+    .step h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+    .step p  { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Footer ────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 48px;
+    }
+
+    footer span { color: var(--green); }
+
+    /* ── Toast ─────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--text);
+      z-index: 999;
+      transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .stats-bar   { grid-template-columns: repeat(2, 1fr); }
+      .meta-grid   { grid-template-columns: repeat(2, 1fr); }
+      .steps       { grid-template-columns: 1fr; }
+      .verdict-row { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* ── Waveform canvas ───────────────────────────────── */
+    .waveform-container {
+      display: none;
+      margin-top: 14px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      height: 60px;
+    }
+
+    canvas.waveform { width: 100%; height: 60px; display: block; }
+  </style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<div class="container">
+
+  <!-- ── Header ───────────────────────────────────────── -->
+  <header>
+    <div class="logo-badge">LIVE SYSTEM</div>
+    <h1>VOICE<span>GUARD</span></h1>
+    <p class="subtitle">// FFT-Based Audio Authentication & Watermarking System</p>
+  </header>
+
+  <!-- ── Stats Bar ─────────────────────────────────────── -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="num" id="statScans">0</div>
+      <div class="label">Files Scanned</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="statFlagged">0</div>
+      <div class="label">Threats Detected</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="statAuth">0</div>
+      <div class="label">Authenticated</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" id="statProtected">0</div>
+      <div class="label">Files Protected</div>
+    </div>
+  </div>
+
+  <!-- ── Tabs ──────────────────────────────────────────── -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('detect', this)">🔍 DETECT</button>
+    <button class="tab-btn" onclick="switchTab('protect', this)">🔐 PROTECT</button>
+    <button class="tab-btn" onclick="switchTab('history', this)">📋 HISTORY</button>
+  </div>
+
+  <!-- ────────────────────────────────────────────────── -->
+  <!-- DETECT PANEL                                       -->
+  <!-- ────────────────────────────────────────────────── -->
+  <div class="panel active" id="panel-detect">
+    <div
+      class="upload-zone"
+      id="detectZone"
+      onclick="document.getElementById('detectInput').click()"
+      ondragover="handleDragOver(event, 'detectZone')"
+      ondragleave="handleDragLeave('detectZone')"
+      ondrop="handleDrop(event, 'detectInput', 'detectZone')"
+    >
+      <span class="upload-icon">🎵</span>
+      <h3>Drop audio here or click to upload</h3>
+      <p>WAV · MP3 · OGG · FLAC · M4A supported</p>
+      <input type="file" id="detectInput" accept="audio/*" style="display:none"
+             onchange="onFileChosen('detectInput', 'detectLabel', 'detectBtn', 'detectWave')" />
+      <div class="file-chosen" id="detectLabel"></div>
+    </div>
+    <div class="waveform-container" id="detectWaveContainer">
+      <canvas class="waveform" id="detectWave"></canvas>
+    </div>
+    <div class="loading-bar" id="detectLoader"></div>
+    <p class="loading-text" id="detectLoaderText">Applying FFT analysis…</p>
+    <button class="action-btn" id="detectBtn" disabled onclick="runDetect()">ANALYZE AUDIO</button>
+
+    <!-- Result -->
+    <div class="result-card" id="detectResult">
+      <div class="verdict-row">
+        <div class="verdict-badge">
+          <div class="verdict-icon" id="rIcon"></div>
+          <div class="verdict-text">
+            <h2 id="rVerdict"></h2>
+            <p id="rRiskLabel"></p>
+          </div>
+        </div>
+        <div class="risk-pill" id="rRisk"></div>
+      </div>
+
+      <div class="confidence-section">
+        <div class="confidence-labels">
+          <span>CONFIDENCE</span>
+          <span id="rConf"></span>
+        </div>
+        <div class="confidence-track">
+          <div class="confidence-fill" id="rConfFill"></div>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="key">File</div>
+          <div class="val" id="rFile" style="font-size:0.72rem;word-break:break-all"></div>
+        </div>
+        <div class="meta-item">
+          <div class="key">Duration</div>
+          <div class="val" id="rDuration"></div>
+        </div>
+        <div class="meta-item">
+          <div class="key">FFT Score</div>
+          <div class="val" id="rScore"></div>
+        </div>
+      </div>
+
+      <button class="report-btn" onclick="downloadReport()">📄 DOWNLOAD FORENSIC REPORT</button>
+    </div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────── -->
+  <!-- PROTECT PANEL                                      -->
+  <!-- ────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-protect">
+    <div
+      class="upload-zone"
+      id="protectZone"
+      onclick="document.getElementById('protectInput').click()"
+      ondragover="handleDragOver(event, 'protectZone')"
+      ondragleave="handleDragLeave('protectZone')"
+      ondrop="handleDrop(event, 'protectInput', 'protectZone')"
+    >
+      <span class="upload-icon">🎙️</span>
+      <h3>Upload original audio to protect</h3>
+      <p>We'll embed an inaudible FFT signature into your file</p>
+      <input type="file" id="protectInput" accept="audio/*" style="display:none"
+             onchange="onFileChosen('protectInput', 'protectLabel', 'protectBtn', 'protectWave')" />
+      <div class="file-chosen" id="protectLabel"></div>
+    </div>
+    <div class="waveform-container" id="protectWaveContainer">
+      <canvas class="waveform" id="protectWave"></canvas>
+    </div>
+    <div class="loading-bar" id="protectLoader"></div>
+    <p class="loading-text" id="protectLoaderText">Embedding FFT watermark…</p>
+    <button class="action-btn" id="protectBtn" disabled onclick="runProtect()">EMBED WATERMARK</button>
+
+    <div class="protect-success" id="protectSuccess">
+      <div class="big-icon">✅</div>
+      <h2>Watermark Embedded!</h2>
+      <p id="protectSuccessMsg">Your file has been protected with an inaudible FFT signature.</p>
+      <p style="margin-top:8px; color: var(--green); font-family: var(--mono); font-size:0.8rem;">
+        Download started automatically.
+      </p>
+    </div>
+  </div>
+
+  <!-- ────────────────────────────────────────────────── -->
+  <!-- HISTORY PANEL                                      -->
+  <!-- ────────────────────────────────────────────────── -->
+  <div class="panel" id="panel-history">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden;">
+      <table class="history-table" id="historyTable">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Verdict</th>
+            <th>Confidence</th>
+            <th>Risk</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr>
+            <td colspan="5" style="text-align:center; color:var(--muted); padding:32px; font-family:var(--mono); font-size:0.8rem;">
+              No scans yet — run an analysis first
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── How It Works ─────────────────────────────────── -->
+  <div class="how-it-works">
+    <h3>// How It Works</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="num">STEP 01</div>
+        <h4>FFT Transform</h4>
+        <p>Audio is converted from the time domain to the frequency domain using Fast Fourier Transform.</p>
+      </div>
+      <div class="step">
+        <div class="num">STEP 02</div>
+        <h4>Signature Embed / Check</h4>
+        <p>Secret frequency bins are injected with a signature (embed) or checked for elevated magnitude (detect).</p>
+      </div>
+      <div class="step">
+        <div class="num">STEP 03</div>
+        <h4>Inverse FFT + Verdict</h4>
+        <p>Audio is reconstructed via inverse FFT. Detection returns a confidence score and forensic report.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ── Toast ──────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── Footer ─────────────────────────────────────────── -->
+<footer>
+  Built at <span>OVERCLOCK 24</span> · VoiceGuard v1.0 · FFT Signal Processing · Python + Flask
+</footer>
+
+<script>
+  const API = 'http://127.0.0.1:5000';
+  let lastResult = {};
+
+  // ── Startup ──────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    setInterval(loadStats, 10000); // refresh every 10s
+  });
+
+  // ── Tab Switching ────────────────────────────────────
+  function switchTab(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'history') loadHistory();
+  }
+
+  // ── Stats ────────────────────────────────────────────
+  async function loadStats() {
+    try {
+      const r = await fetch(`${API}/stats`);
+      const d = await r.json();
+      animateNum('statScans',    d.total_scans);
+      animateNum('statFlagged',  d.flagged);
+      animateNum('statAuth',     d.authenticated);
+      animateNum('statProtected',d.protected);
+    } catch (_) {}
+  }
+
+  function animateNum(id, target) {
+    const el  = document.getElementById(id);
+    const cur = parseInt(el.textContent) || 0;
+    if (cur === target) return;
+    const step = Math.ceil(Math.abs(target - cur) / 12);
+    let v = cur;
+    const t = setInterval(() => {
+      v = v < target ? Math.min(v + step, target) : Math.max(v - step, target);
+      el.textContent = v;
+      if (v === target) clearInterval(t);
+    }, 40);
+  }
+
+  // ── File Chosen ──────────────────────────────────────
+  function onFileChosen(inputId, labelId, btnId, canvasId) {
+    const file = document.getElementById(inputId).files[0];
+    if (!file) return;
+    const label = document.getElementById(labelId);
+    label.style.display = 'flex';
+    label.textContent = '📁 ' + file.name;
+    document.getElementById(btnId).disabled = false;
+    drawWaveform(file, canvasId);
+  }
+
+  // ── Waveform Visualizer ──────────────────────────────
+  function drawWaveform(file, canvasId) {
+    const containerId = canvasId + 'Container' in window ? canvasId + 'Container' : null;
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    canvas.parentElement.style.display = 'block';
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.decodeAudioData(e.target.result, (buffer) => {
+        const data = buffer.getChannelData(0);
+        const step = Math.floor(data.length / canvas.clientWidth);
+        const canvasCtx = canvas.getContext('2d');
+        canvas.width  = canvas.clientWidth;
+        canvas.height = 60;
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+        canvasCtx.fillStyle = '#00e5a0';
+        for (let i = 0; i < canvas.width; i++) {
+          const slice = data.slice(i * step, (i + 1) * step);
+          const max   = Math.max(...slice.map(Math.abs));
+          const h     = max * canvas.height;
+          canvasCtx.fillRect(i, (canvas.height - h) / 2, 1, h || 1);
+        }
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ── Drag & Drop ──────────────────────────────────────
+  function handleDragOver(e, zoneId) {
+    e.preventDefault();
+    document.getElementById(zoneId).classList.add('dragover');
+  }
+
+  function handleDragLeave(zoneId) {
+    document.getElementById(zoneId).classList.remove('dragover');
+  }
+
+  function handleDrop(e, inputId, zoneId) {
+    e.preventDefault();
+    document.getElementById(zoneId).classList.remove('dragover');
+    const dt = e.dataTransfer;
+    if (dt.files.length) {
+      const input = document.getElementById(inputId);
+      const dT = new DataTransfer();
+      dT.items.add(dt.files[0]);
+      input.files = dT.files;
+      input.dispatchEvent(new Event('change'));
+    }
+  }
+
+  // ── DETECT ───────────────────────────────────────────
+  async function runDetect() {
+    const file = document.getElementById('detectInput').files[0];
+    if (!file) return;
+
+    setLoading('detect', true);
+    document.getElementById('detectResult').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('audio', file);
+
+    try {
+      const res = await fetch(`${API}/detect`, { method: 'POST', body: fd });
+      const d   = await res.json();
+      lastResult = { ...d, filename: file.name };
+      showDetectResult(d);
+      loadStats();
+    } catch (e) {
+      showToast('❌ Cannot reach backend. Is Flask running on port 5000?');
+    } finally {
+      setLoading('detect', false);
+    }
+  }
+
+  function showDetectResult(d) {
+    const card = document.getElementById('detectResult');
+    card.className = `result-card ${d.color}`;
+    card.style.display = 'block';
+
+    document.getElementById('rIcon').textContent    = d.authenticated ? '✅' : '❌';
+    document.getElementById('rVerdict').textContent = d.verdict;
+    document.getElementById('rRiskLabel').textContent = d.risk_label || '';
+    document.getElementById('rRisk').textContent    = d.risk + ' RISK';
+    document.getElementById('rConf').textContent    = d.confidence + '%';
+    document.getElementById('rFile').textContent    = d.filename || '—';
+    document.getElementById('rDuration').textContent = d.duration_seconds ? d.duration_seconds + 's' : '—';
+    document.getElementById('rScore').textContent   = d.score !== undefined ? d.score : '—';
+
+    // Animate confidence bar
+    setTimeout(() => {
+      document.getElementById('rConfFill').style.width = d.confidence + '%';
+    }, 50);
+  }
+
+  // ── PROTECT ──────────────────────────────────────────
+  async function runProtect() {
+    const file = document.getElementById('protectInput').files[0];
+    if (!file) return;
+
+    setLoading('protect', true);
+    document.getElementById('protectSuccess').style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('audio', file);
+
+    try {
+      const res = await fetch(`${API}/embed`, { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast('❌ ' + (err.error || 'Embed failed'));
+        return;
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'watermarked_' + file.name.replace(/\.[^.]+$/, '') + '.wav';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      const s = document.getElementById('protectSuccess');
+      s.style.display = 'block';
+      document.getElementById('protectSuccessMsg').textContent =
+        `"${file.name}" has been protected. Download started.`;
+      loadStats();
+    } catch (e) {
+      showToast('❌ Cannot reach backend. Is Flask running on port 5000?');
+    } finally {
+      setLoading('protect', false);
+    }
+  }
+
+  // ── Loading ──────────────────────────────────────────
+  function setLoading(mode, on) {
+    document.getElementById(mode + 'Loader').classList.toggle('active', on);
+    document.getElementById(mode + 'LoaderText').classList.toggle('active', on);
+    document.getElementById(mode + 'Btn').disabled = on;
+  }
+
+  // ── Forensic Report ──────────────────────────────────
+  function downloadReport() {
+    const d = lastResult;
+    const lines = [
+      '╔══════════════════════════════════════════════╗',
+      '║         VOICEGUARD FORENSIC REPORT           ║',
+      '╚══════════════════════════════════════════════╝',
+      '',
+      `Report Generated : ${new Date().toLocaleString()}`,
+      `System           : VoiceGuard v1.0`,
+      `Method           : FFT Frequency Domain Analysis`,
+      '',
+      '── AUDIO FILE ─────────────────────────────────',
+      `Filename         : ${d.filename || '—'}`,
+      `Duration         : ${d.duration_seconds ? d.duration_seconds + ' seconds' : '—'}`,
+      `Sample Rate      : ${d.sample_rate ? d.sample_rate + ' Hz' : '—'}`,
+      '',
+      '── ANALYSIS RESULT ────────────────────────────',
+      `Verdict          : ${d.verdict}`,
+      `Authenticated    : ${d.authenticated ? 'YES' : 'NO'}`,
+      `Confidence Score : ${d.confidence}%`,
+      `FFT Ratio Score  : ${d.score}`,
+      `Risk Level       : ${d.risk}`,
+      `Risk Detail      : ${d.risk_label}`,
+      '',
+      '── TECHNICAL DETAILS ──────────────────────────',
+      `Analysis Method  : Fast Fourier Transform (FFT)`,
+      `Secret Key Bins  : [42, 137, 256, 389, 512, 701, 1024, 1337, 2048, 2500]`,
+      `Detection Threshold : 1.4 (ratio of target to nearby frequencies)`,
+      '',
+      '── INTERPRETATION ─────────────────────────────',
+      d.authenticated
+        ? 'A valid VoiceGuard watermark was detected in the frequency domain.'
+        : 'No VoiceGuard watermark was detected. This file may be AI-generated, tampered, or was never protected.',
+      '',
+      '── DISCLAIMER ─────────────────────────────────',
+      'This report is generated by VoiceGuard for informational purposes.',
+      'For legal or forensic proceedings, consult a certified audio expert.',
+      '',
+      '══════════════════════════════════════════════',
+      'VoiceGuard · Built at Overclock 24 Hackathon',
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `voiceguard_report_${Date.now()}.txt`;
+    a.click();
+  }
+
+  // ── History ──────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      const res  = await fetch(`${API}/history`);
+      const rows = await res.json();
+      const tbody = document.getElementById('historyBody');
+      if (!rows.length) return;
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename}</td>
+          <td>
+            <span class="verdict-pill ${r.verdict === 'WATERMARK DETECTED' ? 'ok' : 'bad'}">
+              ${r.verdict === 'WATERMARK DETECTED' ? '✅ AUTHENTIC' : '❌ TAMPERED'}
+            </span>
+          </td>
+          <td>${r.confidence}%</td>
+          <td style="color:${r.risk === 'LOW' ? 'var(--green)' : 'var(--red)'}">${r.risk}</td>
+          <td style="color:var(--muted)">${new Date(r.timestamp).toLocaleTimeString()}</td>
+        </tr>
+      `).join('');
+    } catch (_) {}
+  }
+
+  // ── Toast ────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+</script>
+</body>
+</html>
