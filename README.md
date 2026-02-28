@@ -1,32 +1,48 @@
-# 🔐 VoiceGuard — AI Voice Clone Detection & Watermarking System
+# VoiceGuard — AI Voice Clone Detection & Watermarking System
 
 > **Hackathon Project | Overclock 24**  
 > A resilient, secure audio authentication framework capable of protecting digital voice integrity in an AI-driven world.
 
 ---
 
-## 📌 Problem Statement
+## 1. Problem Statement
 
-AI-based voice synthesis has made it possible to generate highly realistic cloned audio. Deepfake audio is being used to:
-- Manipulate public opinion
-- Commit financial fraud
-- Impersonate individuals in sensitive contexts
+### Problem Title
+AI Voice Clone Detection & Authentication
 
-There is currently **no widely adopted system** that can embed secure watermarks into audio AND detect tampering or synthetic generation reliably.
+### Problem Description
+AI-based voice synthesis has made it possible to generate highly realistic cloned audio. Deepfake audio is being used to manipulate public opinion, commit financial fraud, and impersonate individuals in sensitive contexts.
 
----
+### Target Users
+- Organizations and individuals needing to verify audio authenticity
+- Legal and forensic investigators
+- Media platforms combating deepfake audio
+- Security-sensitive industries (finance, law enforcement, broadcasting)
 
-## ✅ Our Solution
-
-**VoiceGuard** is a two-in-one audio authentication system that:
-
-1. **Embeds** inaudible, secure watermarks into original audio using **FFT (Fast Fourier Transform)** frequency-domain techniques
-2. **Detects** whether any audio file has been tampered with, cloned, or lacks a valid watermark
-3. **Generates** a downloadable forensic report for legal and evidentiary use
+### Existing Gaps
+There is currently no widely adopted system that can embed secure watermarks into audio AND detect tampering or synthetic generation reliably.
 
 ---
 
-## 🎯 Key Features
+## 2. Problem Understanding & Approach
+
+### Root Cause Analysis
+The rapid advancement of AI voice synthesis tools has outpaced the development of detection and verification mechanisms. Without a standardized way to authenticate audio, anyone can generate convincing fake audio that is nearly indistinguishable from the original.
+
+### Solution Strategy
+Implement a dual-purpose system that proactively embeds invisible watermarks into authentic audio at creation time, and reactively detects whether any given audio file is authentic or tampered — providing a full chain of custody for audio content.
+
+---
+
+## 3. Proposed Solution
+
+### Solution Overview
+VoiceGuard is a two-in-one audio authentication system that embeds inaudible, secure watermarks into original audio and detects whether any audio file has been tampered with, cloned, or lacks a valid watermark.
+
+### Core Idea
+Using FFT (Fast Fourier Transform) frequency-domain techniques, secret signatures are injected into inaudible frequency bins of an audio file. These signatures are imperceptible to listeners but detectable by the system, enabling reliable authentication.
+
+### Key Features
 
 | Feature | Description |
 |--------|-------------|
@@ -39,120 +55,189 @@ There is currently **no widely adopted system** that can embed secure watermarks
 
 ---
 
-## 🛠️ Tech Stack
+## 4. System Architecture
 
-| Layer | Technology |
-|-------|-----------|
-| Signal Processing | NumPy, SciPy (FFT) |
-| Audio Handling | Librosa, SoundFile |
-| Backend | Python, Flask, Flask-CORS |
-| Frontend | HTML5, CSS3, Vanilla JavaScript |
-| Deployment | Railway.app / Render.com |
+### High-Level Flow
+User → Frontend (HTML/CSS/JS) → Flask REST API → FFT Watermark Engine → Audio Output / Detection Report
 
----
+### Architecture Description
+The user uploads an audio file via the frontend drag-and-drop interface. The file is sent to the Flask backend, which routes it to either the watermark embedding module or the detection module. The core FFT engine processes the audio in the frequency domain, then returns the result (watermarked audio or detection verdict) back to the frontend along with a forensic report.
 
-## 📁 Project Structure
-
-```
-voiceguard/
-├── backend/
-│   ├── app.py              # Flask API server
-│   ├── watermark.py        # Core FFT watermark logic
-│   └── requirements.txt    # Python dependencies
-├── frontend/
-│   ├── index.html          # Main UI
-│   ├── style.css           # Styling
-│   └── script.js           # Frontend logic
-├── test_audio/             # Sample audio files for demo
-└── README.md
-```
+### Architecture Diagram
+(Add system architecture diagram image here)
 
 ---
 
-## ⚙️ How It Works
+## 5. Database Design
 
-### Embedding a Watermark
-```
-Original Audio
-      ↓
-Apply FFT → Convert to Frequency Domain
-      ↓
-Inject secret signature at specific frequency bins
-      ↓
-Apply Inverse FFT → Convert back to Audio
-      ↓
-Watermarked Audio (sounds identical to original)
-```
+### ER Diagram
+(Add ER diagram image here)
 
-### Detecting a Watermark
-```
-Any Audio File
-      ↓
-Apply FFT → Convert to Frequency Domain
-      ↓
-Check if secret frequency bins contain our signature
-      ↓
-Calculate confidence score
-      ↓
-AUTHENTIC ✅  or  TAMPERED / CLONED ❌
-```
+### ER Diagram Description
+VoiceGuard is primarily a stateless processing system. Future iterations may include a database for storing scan history, watermark keys, and user session data.
 
 ---
 
-## 🚀 Getting Started
+## 6. Dataset Selected
 
-### Prerequisites
-- Python 3.8+
-- pip
+### Dataset Name
+Custom test audio samples
 
-### Installation
+### Source
+Internally recorded and publicly available audio samples
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/voiceguard.git
-cd voiceguard
+### Data Type
+WAV / MP3 audio files
 
-# Install dependencies
-pip install numpy scipy librosa soundfile flask flask-cors
-```
+### Selection Reason
+Required diverse, real-world audio samples to validate watermark embedding and detection across different voice types, qualities, and lengths.
 
-### Run the Backend
-
-```bash
-cd backend
-python app.py
-# Server starts at http://localhost:5000
-```
-
-### Run the Frontend
-
-```bash
-cd frontend
-# Simply open index.html in your browser
-```
+### Preprocessing Steps
+- Convert audio files to a standard sample rate
+- Normalize amplitude levels
+- Trim silence from start/end of clips
 
 ---
 
+## 7. Model Selected
 
-## 👥 Team
+### Model Name
+FFT-Based Frequency Domain Watermarking (Signal Processing Algorithm)
 
-| Member | Role |
-|--------|------|
-| Krish | Backend & Signal Processing |
-| Shivam | Frontend & UI/UX |
-| Ashiwan Singh | Integration, Testing & Presentation |
+### Selection Reasoning
+FFT allows precise manipulation of specific inaudible frequency bins without affecting perceptible audio quality. It is computationally efficient and requires no training data, making it ideal for a hackathon setting.
+
+### Alternatives Considered
+- Deep learning-based audio classification (more complex, requires training data)
+- LSB (Least Significant Bit) watermarking in time domain (less robust to compression)
+
+### Evaluation Metrics
+- Watermark detectability rate (confidence score %)
+- Perceptual audio quality (watermarked audio sounds identical to original)
+- Tamper detection accuracy (detection of cloned/modified audio)
 
 ---
 
-## 🏆 Built At
+## 8. Technology Stack
 
-**Overclock 24** — 24-Hour Hackathon
+### Frontend
+HTML5, CSS3, Vanilla JavaScript — dark-themed responsive UI with drag-and-drop file upload
+
+### Backend
+Python, Flask, Flask-CORS
+
+### ML/AI
+NumPy, SciPy (FFT-based signal processing), Librosa, SoundFile
+
+### Database
+N/A (stateless processing; persistent storage is a future scope item)
+
+### Deployment
+Railway.app / Render.com
 
 ---
 
-## 📄 License
+## 9. API Documentation & Testing
 
-MIT License — Free to use and modify.
+### API Endpoints List
+- **POST /embed** — Upload an audio file to embed a watermark; returns watermarked audio
+- **POST /detect** — Upload an audio file to check for a valid watermark; returns verdict and confidence score
+- **GET /report** — Download the forensic report (PDF) with verdict, confidence %, and timestamp
+
+### API Testing Screenshots
+(Add Postman / Thunder Client screenshots here)
+
+---
+
+## 10. Module-wise Development & Deliverables
+
+### Checkpoint 1: Research & Planning
+- Deliverables: Problem scoping, tech stack selection, FFT watermarking approach validated
+
+### Checkpoint 2: Backend Development
+- Deliverables: Flask API server (`app.py`) with `/embed` and `/detect` endpoints functional
+
+### Checkpoint 3: Frontend Development
+- Deliverables: Responsive dark-themed UI with drag-and-drop upload and live dashboard stats
+
+### Checkpoint 4: Model Training
+- Deliverables: N/A — FFT algorithm requires no training; core watermark logic (`watermark.py`) implemented
+
+### Checkpoint 5: Model Integration
+- Deliverables: Frontend connected to backend API; end-to-end watermark embed and detect flow working
+
+### Checkpoint 6: Deployment
+- Deliverables: Backend deployed on Railway.app/Render.com; frontend accessible via browser
+
+---
+
+## 11. End-to-End Workflow
+
+1. User opens the VoiceGuard web interface
+2. User drags and drops an audio file onto the upload area
+3. User selects either **Embed Watermark** or **Detect Watermark**
+4. Frontend sends the file to the Flask REST API
+5. Backend applies FFT and injects/checks the secret signature in inaudible frequency bins
+6. Backend returns result — watermarked audio file OR detection verdict with confidence score
+7. User downloads the watermarked audio or the forensic report
+
+---
+
+## 12. Demo & Video
+
+- Live Demo Link: *(Add link here)*
+- Demo Video Link: *(Add link here)*
+- GitHub Repository: https://github.com/your-username/voiceguard
+
+---
+
+## 13. Hackathon Deliverables Summary
+
+- Functional FFT watermark embedding and detection system
+- Flask REST API with embed, detect, and report endpoints
+- Responsive dark-themed frontend with drag-and-drop interface and live stats dashboard
+- Downloadable forensic report for legal/evidentiary use
+
+---
+
+## 14. Team Roles & Responsibilities
+
+| Member Name | Role | Responsibilities |
+|-------------|------|-----------------|
+| Krish | Backend & Signal Processing | Flask API development, FFT watermark logic implementation |
+| Shivam | Frontend & UI/UX | HTML/CSS/JS UI design, drag-and-drop upload, live dashboard |
+| Ashiwan Singh | Integration, Testing & Presentation | API-frontend integration, QA testing, demo presentation |
+
+---
+
+## 15. Future Scope & Scalability
+
+### Short-Term
+- Add user authentication to manage watermark keys per user
+- Improve tamper detection robustness against audio compression artifacts
+- Add support for more audio formats (AAC, FLAC, OGG)
+
+### Long-Term
+- Integrate ML-based deepfake detection as a second validation layer
+- Build a browser extension for real-time audio verification on media platforms
+- Provide an enterprise-grade API with rate limiting, audit logs, and key management
+- Pursue standardization as an industry audio authentication protocol
+
+---
+
+## 16. Known Limitations
+
+- Watermark may be degraded by heavy audio compression (e.g., low-bitrate MP3 conversion)
+- No persistent database for watermark key management in the current version
+- Detection confidence score may be reduced for very short audio clips
+
+---
+
+## 17. Impact
+
+- Empowers individuals and organizations to prove the authenticity of audio recordings
+- Provides a practical, open-source tool against deepfake audio used in fraud and disinformation
+- Lays the groundwork for a standardized audio authentication ecosystem
 
 ---
 
