@@ -1,1 +1,218 @@
-# Voice-Cloning-Watermark-Protection-System
+# 🔐 VoiceGuard — AI Voice Clone Detection & Watermarking System
+
+> **Hackathon Project | Overclock 24**  
+> A resilient, secure audio authentication framework capable of protecting digital voice integrity in an AI-driven world.
+
+---
+
+## 📌 Problem Statement
+
+AI-based voice synthesis has made it possible to generate highly realistic cloned audio. Deepfake audio is being used to:
+- Manipulate public opinion
+- Commit financial fraud
+- Impersonate individuals in sensitive contexts
+
+There is currently **no widely adopted system** that can embed secure watermarks into audio AND detect tampering or synthetic generation reliably.
+
+---
+
+## ✅ Our Solution
+
+**VoiceGuard** is a two-in-one audio authentication system that:
+
+1. **Embeds** inaudible, secure watermarks into original audio using **FFT (Fast Fourier Transform)** frequency-domain techniques
+2. **Detects** whether any audio file has been tampered with, cloned, or lacks a valid watermark
+3. **Generates** a downloadable forensic report for legal and evidentiary use
+
+---
+
+## 🎯 Key Features
+
+| Feature | Description |
+|--------|-------------|
+| 🔐 FFT Watermarking | Embeds secret signatures in inaudible frequency bins |
+| 🔍 Tamper Detection | Detects missing or altered watermarks with confidence score |
+| 📄 Forensic Report | Downloadable report with verdict, confidence %, and timestamp |
+| 📊 Live Dashboard | Real-time stats — files scanned, threats detected, files protected |
+| 🌐 REST API | Simple Flask API for easy integration into any platform |
+| 🎨 Clean UI | Dark-themed, responsive frontend with drag & drop upload |
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Signal Processing | NumPy, SciPy (FFT) |
+| Audio Handling | Librosa, SoundFile |
+| Backend | Python, Flask, Flask-CORS |
+| Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Deployment | Railway.app / Render.com |
+
+---
+
+## 📁 Project Structure
+
+```
+voiceguard/
+├── backend/
+│   ├── app.py              # Flask API server
+│   ├── watermark.py        # Core FFT watermark logic
+│   └── requirements.txt    # Python dependencies
+├── frontend/
+│   ├── index.html          # Main UI
+│   ├── style.css           # Styling
+│   └── script.js           # Frontend logic
+├── test_audio/             # Sample audio files for demo
+└── README.md
+```
+
+---
+
+## ⚙️ How It Works
+
+### Embedding a Watermark
+```
+Original Audio
+      ↓
+Apply FFT → Convert to Frequency Domain
+      ↓
+Inject secret signature at specific frequency bins
+      ↓
+Apply Inverse FFT → Convert back to Audio
+      ↓
+Watermarked Audio (sounds identical to original)
+```
+
+### Detecting a Watermark
+```
+Any Audio File
+      ↓
+Apply FFT → Convert to Frequency Domain
+      ↓
+Check if secret frequency bins contain our signature
+      ↓
+Calculate confidence score
+      ↓
+AUTHENTIC ✅  or  TAMPERED / CLONED ❌
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.8+
+- pip
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/voiceguard.git
+cd voiceguard
+
+# Install dependencies
+pip install numpy scipy librosa soundfile flask flask-cors
+```
+
+### Run the Backend
+
+```bash
+cd backend
+python app.py
+# Server starts at http://localhost:5000
+```
+
+### Run the Frontend
+
+```bash
+cd frontend
+# Simply open index.html in your browser
+```
+
+---
+
+## 🔌 API Endpoints
+
+### `POST /embed`
+Embeds an inaudible FFT watermark into an audio file.
+
+**Request:** `multipart/form-data` with `audio` file  
+**Response:** Watermarked audio file (download)
+
+---
+
+### `POST /detect`
+Detects whether a watermark exists in the uploaded audio.
+
+**Request:** `multipart/form-data` with `audio` file  
+**Response:**
+```json
+{
+  "verdict": "WATERMARK DETECTED ✅",
+  "authenticated": true,
+  "confidence": 94,
+  "risk": "LOW - Original Protected Audio",
+  "color": "green"
+}
+```
+
+---
+
+### `GET /health`
+Health check endpoint.
+
+**Response:**
+```json
+{ "status": "VoiceGuard is running" }
+```
+
+---
+
+## 🎬 Demo Walkthrough
+
+1. **Protect your audio** — Upload any WAV file → Click "Protect" → Download watermarked file
+2. **Verify authenticity** — Upload the watermarked file to "Detect" → See `WATERMARK DETECTED ✅`
+3. **Catch a clone** — Upload an AI-generated voice → See `NO WATERMARK / TAMPERED ❌`
+4. **Get proof** — Download the forensic report with confidence score and timestamp
+
+---
+
+## 🧠 Technical Deep Dive
+
+VoiceGuard uses **FFT (Fast Fourier Transform)** to convert audio from the time domain to the frequency domain. A secret set of frequency bins acts as a signature:
+
+```python
+SECRET_KEY = [42, 137, 256, 512, 1024, 2048]
+```
+
+During embedding, the magnitude of these bins is increased by a fixed strength value (`WATERMARK_STRENGTH = 50`). This change is **imperceptible to human hearing** but detectable by the algorithm.
+
+During detection, the system compares the magnitude of secret bins against nearby frequencies. A significantly elevated magnitude indicates the watermark is present.
+
+---
+
+## 👥 Team
+
+| Member | Role |
+|--------|------|
+| Person 1 | Backend & Signal Processing |
+| Person 2 | Frontend & UI/UX |
+| Person 3 | Integration, Testing & Presentation |
+
+---
+
+## 🏆 Built At
+
+**Overclock 24** — 24-Hour Hackathon
+
+---
+
+## 📄 License
+
+MIT License — Free to use and modify.
+
+---
+
+> *"In a world where anyone can clone a voice in 30 seconds, VoiceGuard ensures authenticity can always be proven."*
