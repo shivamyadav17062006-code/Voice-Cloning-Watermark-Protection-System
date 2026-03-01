@@ -185,8 +185,8 @@ Railway.app / Render.com
 
 ## 12. Demo & Video
 
-- Live Demo Link: *(Add link here)*
-- Demo Video Link: *(Add link here)*
+- Live Demo Link: 
+- Demo Video Link: https://drive.google.com/file/d/1hiRxTFIV-RXiALqd-vTP-eii3bkLT5bN/view?usp=share_link
 - GitHub Repository: (https://github.com/shivamyadav17062006-code/Voice-Cloning-Watermark-Protection-System/tree/main)
 
 ---
