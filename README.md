@@ -183,11 +183,11 @@ Railway.app / Render.com
 
 ---
 
-## 12. Demo & Video
-
+## 12. Demo Video & Other Links
 
 - Demo Video Link: https://drive.google.com/file/d/1hiRxTFIV-RXiALqd-vTP-eii3bkLT5bN/view?usp=share_link
-- GitHub Repository: (https://github.com/shivamyadav17062006-code/Voice-Cloning-Watermark-Protection-System/tree/main)
+- Presentation Link: https://drive.google.com/file/d/1c-hoDyFyW6J6oRvmiUYzlg554c_Igy2s/view?usp=share_link
+- Deployed Link: https://voice-cloning-watermark-protection-system.onrender.com
 
 ---
 
